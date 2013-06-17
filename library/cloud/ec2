@@ -204,8 +204,12 @@ except ImportError:
     sys.exit(1)
 
 class Ec2IdempotentHandler(object):
-  def __init__(self):
-    pass
+
+  def __init__(self, ec2):
+    self.ec2 = ec2
+
+  def load_running_instances(self, id):
+    return self.ec2.get_all_instances(None, {'tag-key': 'ansible_idempotency_id', 'tag-value': id})
 
 def main():
     module = AnsibleModule(
