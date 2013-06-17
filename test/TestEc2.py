@@ -7,14 +7,13 @@ import mock
 from mock import MagicMock, Mock
 
 # Setup an environment for ec2 module to run in, not the most testable code
-mockedAnsibleModule = Mock()
-mockedAnsibleModule.params = {
+mocked_ansibleModule = Mock()
+mocked_ansibleModule.params = {
     'wait_timeout': 0,
     'count': 0,
 }
-mockedBoto = Mock()
 ec2_module_scope = {
-    'AnsibleModule': lambda *args, **kwargs: mockedAnsibleModule,
+    'AnsibleModule': lambda *args, **kwargs: mocked_ansibleModule,
     'BOOLEANS': [False, True],
     'os': os,
 }
@@ -24,7 +23,7 @@ for libdir in sys.path:
         execfile(path, ec2_module_scope)
         break
 
-class TestEc2Instance(unittest.TestCase):
+class TestEc2IdempotentHandler(unittest.TestCase):
 
     def test_class_loaded(self):
         try:
