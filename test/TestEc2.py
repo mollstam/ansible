@@ -34,18 +34,17 @@ def instance_fulfilling_request(request):
     mock_group.name = request['group_name']
     mock_region = Mock(name='RegionInfo');
     mock_region.name = request['region'];
-    instance = mocked_instance({
-        'key_name': request['key_name'],
-        'groups' : [mock_group],
-        'region': mock_region,
-        'placement': request['zone'],
-        'instance_type': request['instance_type'],
-        'image_id': request['image'],
-        'monitoring_state': 'enabled',
-        'kernel': request['kernel'],
-        'ramdisk': request['ramdisk'],
-        'tags': request['instance_tags'],
-    })
+    instance = mocked_instance({'key_name': request['key_name'],
+                                'groups' : [mock_group],
+                                'region': mock_region,
+                                'placement': request['zone'],
+                                'instance_type': request['instance_type'],
+                                'image_id': request['image'],
+                                'monitoring_state': 'enabled',
+                                'kernel': request['kernel'],
+                                'ramdisk': request['ramdisk'],
+                                'tags': request['instance_tags'],
+                                'state': 'running'})
 
     return instance
 
@@ -57,19 +56,17 @@ class TestEc2IdempotentHandler(unittest.TestCase):
         self.boto_mock.ec2.connect_ec2.return_value = self.ec2_mock
         ec2_module_scope['boto'] = self.boto_mock
 
-        request = {
-            'key_name': 'test_key_name',
-            'group_name': 'test_group_name',
-            'group_id': 'sg-test',
-            'region': 'test-1',
-            'zone': 'test-1a',
-            'instance_type': 'm1.test',
-            'image': 'ami-test',
-            'monitoring': True,
-            'kernel': 'aki-test',
-            'ramdisk': '-',
-            'instance_tags': {'test-tag-key': 'test-tag-value'},
-        }
+        request = {'key_name': 'test_key_name',
+                   'group_name': 'test_group_name',
+                   'group_id': 'sg-test',
+                   'region': 'test-1',
+                   'zone': 'test-1a',
+                   'instance_type': 'm1.test',
+                   'image': 'ami-test',
+                   'monitoring': True,
+                   'kernel': 'aki-test',
+                   'ramdisk': '-',
+                   'instance_tags': {'test-tag-key': 'test-tag-value'}}
         self.ec2_handler = ec2_module_scope['Ec2IdempotentHandler'](
             ec2_module_scope['boto'].ec2.connect_ec2(), request)
 
@@ -77,6 +74,11 @@ class TestEc2IdempotentHandler(unittest.TestCase):
         self.assertEqual(self.ec2_handler.fulfils_request(instance),
                          False,
                          'should not fulfil')
+
+    def assertFulfilRequest(self, instance):
+        self.assertEqual(self.ec2_handler.fulfils_request(instance),
+                         True,
+                         'should fulfil')
 
     def test_class_loaded(self):
         try:
@@ -102,7 +104,7 @@ class TestEc2IdempotentHandler(unittest.TestCase):
     def test_instance_fulfils_request_true(self):
         instance = instance_fulfilling_request(self.ec2_handler.request)
 
-        assert self.ec2_handler.fulfils_request(instance), 'should fulfil'
+        self.assertFulfilRequest(instance)
 
     def test_instance_fulfils_request_different_key_name(self):
         instance = instance_fulfilling_request(self.ec2_handler.request)
@@ -158,3 +160,63 @@ class TestEc2IdempotentHandler(unittest.TestCase):
         instance = instance_fulfilling_request(self.ec2_handler.request)
         instance.tags = {'Name': 'Another Name'}
         self.assertNotFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_group_name(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['group_name']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_group_id(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['group_id']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_region(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['region']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_zone(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['zone']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_instance_type(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['instance_type']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_monitoring(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['monitoring']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_kernel(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['kernel']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_ramdisk(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['ramdisk']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_no_tags(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        del self.ec2_handler.request['instance_tags']
+        self.assertFulfilRequest(instance)
+
+    def test_instance_fulfils_request_terminated(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        instance.state = 'terminated'
+        self.assertNotFulfilRequest(instance)
+
+    def test_instance_fulfils_request_stopped(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        instance.state = 'stopped'
+        self.assertNotFulfilRequest(instance)
+
+    def test_instance_fulfils_request_pending(self):
+        instance = instance_fulfilling_request(self.ec2_handler.request)
+        instance.state = 'pending'
+        self.assertFulfilRequest(instance)
