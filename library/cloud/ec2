@@ -205,11 +205,29 @@ except ImportError:
 
 class Ec2IdempotentHandler(object):
 
-  def __init__(self, ec2):
+  def __init__(self, ec2, request):
     self.ec2 = ec2
+    self.request = request
 
   def load_running_instances(self, id):
     return self.ec2.get_all_instances(None, {'tag-key': 'ansible_idempotency_id', 'tag-value': id})
+
+  def fulfils_request(self, instance):
+    if (instance.key_name == self.request['key_name']
+        and len(instance.groups) > 0
+        and instance.groups[0].name == self.request['group_name']
+        and instance.groups[0].id == self.request['group_id']
+        and instance.region.name == self.request['region']
+        and instance.placement == self.request['zone']
+        and instance.instance_type == self.request['instance_type']
+        and instance.image_id == self.request['image']
+        and (instance.monitoring_state == 'enabled') == self.request['monitoring']
+        and instance.kernel == self.request['kernel']
+        and instance.ramdisk == self.request['ramdisk']
+        and instance.tags == self.request['instance_tags']):
+      return True
+    else:
+      return False
 
 def main():
     module = AnsibleModule(
