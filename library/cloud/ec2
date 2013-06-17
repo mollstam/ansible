@@ -203,6 +203,10 @@ except ImportError:
     print "failed=True msg='boto required for this module'"
     sys.exit(1)
 
+class Ec2Instance(boto.ec2.instance.Instance):
+  def __init__(self):
+    boto.ec2.instance.Instance.__init__(self)
+
 def main():
     module = AnsibleModule(
         argument_spec = dict(
