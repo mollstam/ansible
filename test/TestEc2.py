@@ -12,18 +12,22 @@ mockedAnsibleModule.params = {
     'wait_timeout': 0,
     'count': 0,
 }
-AnsibleModule = lambda *args, **kwargs: mockedAnsibleModule
-BOOLEANS = [True, False]
+mockedBoto = Mock()
+ec2_module_scope = {
+    'AnsibleModule': lambda *args, **kwargs: mockedAnsibleModule,
+    'BOOLEANS': [False, True],
+    'os': os,
+}
 for libdir in sys.path:
     path = os.path.join(libdir, 'cloud/ec2')
     if (os.path.isfile(path)):
-        execfile(path)
+        execfile(path, ec2_module_scope)
         break
 
 class TestEc2Instance(unittest.TestCase):
 
     def test_class_loaded(self):
         try:
-            Ec2Instance
+            ec2_module_scope['Ec2IdempotentHandler']
         except NameError:
-            assert False == True, 'Ec2Instance is not loaded'
+            assert False == True, 'Ec2IdempotentHandler is not loaded'
