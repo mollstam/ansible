@@ -43,7 +43,7 @@ def instance_fulfilling_request(request):
                                 'monitoring_state': 'enabled',
                                 'kernel': request['kernel'],
                                 'ramdisk': request['ramdisk'],
-                                'tags': request['instance_tags'],
+                                'tags': {'test-key': 'test-value'},
                                 'state': 'running'})
 
     return instance
@@ -66,9 +66,10 @@ class TestEc2IdempotentHandler(unittest.TestCase):
                    'monitoring': True,
                    'kernel': 'aki-test',
                    'ramdisk': '-',
-                   'instance_tags': {'test-tag-key': 'test-tag-value'}}
+                   'instance_tags': '{"test-key":"test-value"}'}
         self.ec2_handler = ec2_module_scope['Ec2IdempotentHandler'](
             ec2_module_scope['boto'].ec2.connect_ec2(), request)
+        self.ec2_handler.tags = {'test-key': 'test-value'}
 
     def assertNotFulfilRequest(self, instance):
         self.assertEqual(self.ec2_handler.fulfils_request(instance),
@@ -158,7 +159,7 @@ class TestEc2IdempotentHandler(unittest.TestCase):
 
     def test_instance_fulfils_request_different_tags(self):
         instance = instance_fulfilling_request(self.ec2_handler.request)
-        instance.tags = {'Name': 'Another Name'}
+        self.ec2_handler.tags = {'test-key': 'test-another-value'}
         self.assertNotFulfilRequest(instance)
 
     def test_instance_fulfils_request_no_group_name(self):
