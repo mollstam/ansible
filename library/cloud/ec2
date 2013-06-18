@@ -325,6 +325,7 @@ def main():
     # Lookup any instances that match our request
     
     running_instances = []
+    deprecated_instances = []
     count_remaining = int(count)
         
     if id != None:
@@ -342,13 +343,17 @@ def main():
         previous_reservations = ec2_handler.load_running_instances(id)
         for res in previous_reservations:
             for prev_instance in res.instances:
-                if ec2_handler.fulfils_request(prev_instance):
+                if ec2_handler.fulfils_request(prev_instance) and len(running_instances) < count:
                   running_instances.append(prev_instance)
-        count_remaining = count_remaining - len(running_instances) 
+                else:
+                  prev_instance.terminate()
+                  deprecated_instances.append(prev_instance)
+        count_remaining = count_remaining - len(running_instances)
         if instance_tags != None:
           instance_tags = module.from_json(instance_tags)
         else:
-          instance_tags = {'ansible_idempotency_id': id}
+          instance_tags = {}
+        instance_tags['ansible_idempotency_id'] = id
     
     # Both min_count and max_count equal count parameter. This means the launch request is explicit (we want count, or fail) in how many instances we want.
     
